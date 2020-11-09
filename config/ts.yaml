@@ -1,0 +1,26 @@
+- region:
+    ts_type: "3d_pose_region"
+    nodes: 
+        r1: type: "square"
+            pose: (FILL POSE)
+            length: 1
+            connected_to: - r2: "goto_r2"
+                          - r3: "goto_r3"
+        r2: type: "station"
+            pose:
+            radius: 
+            connected_to: - r1: "goto_r1"
+        r3: type: "square"
+            pose: (FILL POSE)
+            length: 1
+            connected_to: - r1: "goto_r1"
+
+- load:
+    ts_type: "None"
+    nodes:
+        unloaded:
+            connected_to: - loaded: "pick"
+        loaded:
+            connected_to: - unloaded: "drop"
+
+
