@@ -8,15 +8,19 @@ import rospy
 # action attributes defined in the TS config
 
 class LTLController(object):
-	def __init__(self):
+    def __init__(self):
 
-	# Get params from ROS param server and config files
-	def init_params(self):
-		#TODO: express ts file location as a parameter
-		#TODO: express LTL formula as parameters (strings)
+    # Get params from ROS param server and config files
+    def init_params(self):
+        self.agent_name = rospy.get_param('agent_name')
 
-	# Import TS and action attributes from file
-	def import_ts_from_file(self):
+        # Get TS from param
+        transition_system_textfile = rospy.get_param('transition_system_textfile')
+        self.transition_system = yaml.load(transition_system_textfile)
+        print self.transition_system
+
+    # Import TS and action attributes from file
+    def import_ts_from_file(self):
 
 
 #==============================
