@@ -3,16 +3,18 @@ import rospy
 import math
 from rospy.msg import AnyMsg
 from geometry_msgs.msg import Pose, PoseWithCovarianceStamped, PoseWithCovariance, PoseStamped
+from roslib.message import get_message_class
 from tf.transformations import euler_from_quaternion
 
 #=====================================
 #      Monitor agent pose and
 #    returns 2D_pose_region state
 #=====================================
-class RegionStateMonitor(object):
+class Region2DPoseStateMonitor(object):
     # Takes as input the region dictionary from the TS dictionary
     def __init__(self, region_dict, localization_topic):
         self.region_dict = region_dict
+        self.state=None
 
         self.init_params()
 
@@ -24,9 +26,9 @@ class RegionStateMonitor(object):
     #-----------------
     def init_params(self):
         # Generate list of station regions
-        self.stations = get_stations(self.region_dict)
+        self.stations = self.get_stations(self.region_dict)
         # Generate list of square regions
-        self.squares = get_squares(self.region_dict)
+        self.squares = self.get_squares(self.region_dict)
 
     #----------------------------------------
     # Setup subscriber to agent localization
@@ -40,65 +42,72 @@ class RegionStateMonitor(object):
     #-------------------------------------------------------------------
     def check_region(self, pose):
         # If current region is known, 
-        if self.curr_reg:
+        if self.state:
+            print "previous state exist"
             # Check if current region was left (using hysteresis)
-            if (self.region_dict["nodes"][self.curr_reg]["attr"]["type"] == "station"):
-                agent_has_left = self.is_in_station(pose, self.region_dict["nodes"][self.curr_reg],
-                                                          self.region_dict["nodes"][self.curr_reg]["attr"]["dist_hysteresis"],
-                                                          self.region_dict["nodes"][self.curr_reg]["attr"]["angle_hysteresis"])
+            if (self.region_dict["nodes"][self.state]["attr"]["type"] == "station"):
+                agent_has_left = not self.is_in_station(pose, self.state,
+                                                              self.region_dict["nodes"][self.state]["attr"]["dist_hysteresis"],
+                                                              self.region_dict["nodes"][self.state]["attr"]["angle_hysteresis"])
             else:
-                agent_has_left = self.is_in_square(pose, self.region_dict["nodes"][self.curr_reg],
-                                                         self.region_dict["nodes"][self.curr_reg]["attr"]["hysteresis"])
+                agent_has_left = not self.is_in_square(pose, self.state,
+                                                             self.region_dict["nodes"][self.state]["attr"]["hysteresis"])
 
             # If agent has left current regions:
             if agent_has_left:
+                print "agent has left curr reg"
                 # Check all connected station
-                if self.update_curr_reg(pose, self.region_dict["nodes"][self.curr_reg]["connected_to"].keys()):
+                if self.update_state(pose, self.region_dict["nodes"][self.state]["connected_to"].keys()):
                     return True
 
         # If not found in connected regions or no previous region, check all regions
         else:
-            if self.update_curr_reg(pose, self.region_dict["nodes"].keys()):
+            print "previous state does not exist or agent not in connected regions"
+            if self.update_state(pose, self.region_dict["nodes"].keys()):
                 return True
 
         # Return false if region could not be found from pose
         return False
+        print "agent not found"
 
     #-----------------------
     # Update current region
     #-----------------------
     # Go through all regions given by a key list and returns true is pose is in region
     # Starting with station to give priorities for stations over squares
-    def update_curr_reg(self, pose, region_keys):
+    def update_state(self, pose, region_keys):
         # Check stations first
         for reg in region_keys:
             if reg in self.stations:
                 if self.is_in_station(pose, reg):
-                    self.curr_reg = reg
+                    self.state = str(reg)
+                    print "agent found in reg %s" %(reg)
                     return True
         # Then check squares
         for reg in region_keys:
             if reg in self.squares:
                 if self.is_in_square(pose, reg):
-                    self.curr_reg = reg
+                    self.state = str(reg)
+                    print "agent found in reg %s" %(reg)
                     return True
-
-    #--------------------------------------------------------------------------
-    # Filter keys by returning only "station" regions from a region dictionary
-    #--------------------------------------------------------------------------
+                    
+    #-------------------------------------------------------------
+    # Filter keys by returning only "station" regions from a dict
+    #-------------------------------------------------------------
     def get_stations(self, region_dict):
+        print self.region_dict.keys()
         stations = []
-        for reg in region_dict:
+        for reg in region_dict["nodes"]:
             if (region_dict["nodes"][reg]["attr"]["type"] == "station"):
                 stations.append(reg)
         return stations
 
-    #-------------------------------------------------------------------------
-    # Filter keys by returning only "square" regions from a region dictionary
-    #-------------------------------------------------------------------------
+    #------------------------------------------------------------
+    # Filter keys by returning only "square" regions from a dict
+    #------------------------------------------------------------
     def get_squares(self, region_dict):
         squares = []
-        for reg in region_dict:
+        for reg in region_dict["nodes"]:
             if (region_dict["nodes"][reg]["attr"]["type"] == "square"):
                 squares.append(reg)
         return squares
@@ -109,11 +118,20 @@ class RegionStateMonitor(object):
     # square dict format: {connected_to: {}, attr: {type, pose, length, hysteresis}}
     # Only position is checked in square, not orientation
     def is_in_square(self, pose, square, hysteresis = 0):
-        square_pose = square["attr"]["length"]
-        square_side_length = square["attr"]["pose"]
+        print "square is"
+        print square
+        print "-----------"
+        square_pose = self.region_dict["nodes"][square]["attr"]["pose"]
+        square_side_length = self.region_dict["nodes"][square]["attr"]["length"]
 
-        dist_x = abs(square_pose[0] - pose.position.x)
-        dist_y = abs(square_pose[0] - pose.position.y)
+        rospy.logwarn("Checking for agent in square region %s, with pose %s, side lenght %i and hysteresis %i" %(square, square_pose, square_side_length, hysteresis))
+        rospy.logwarn(pose)
+        rospy.logwarn("-----------")
+
+        dist_x = abs(square_pose[0][0] - pose.position.x)
+        dist_y = abs(square_pose[0][1] - pose.position.y)
+
+        rospy.logwarn("dist x is %i and dist y is %i" %(dist_x, dist_y))
 
         # If distance to center on both x and y is inferior to half of the square side lenght plus hysteresis, agent is in region
         if (dist_x/2 < square_side_length + hysteresis) and (dist_y/2 < square_side_length + hysteresis):
@@ -124,21 +142,34 @@ class RegionStateMonitor(object):
     #-------------------------------------
     # Check if pose is in a given station
     #-------------------------------------
-    # square dict format: {connected_to: {}, attr: {type, pose, radius, angle_threshold, dist_hysteresis, angle_hysteresis}}
+    # station dict format: {connected_to: {}, attr: {type, pose, radius, angle_threshold, dist_hysteresis, angle_hysteresis}}
     # Station is a disk, with orientation being checked as well
     def is_in_station(self, pose, station, dist_hysteresis = 0, angle_hysteresis = 0):
-        station_pose = station["attr"]["pose"]
-        station_radius = station["attr"]["radius"]
-        angle_threshold = station["attr"]["angle_threshold"]
+        print "station is"
+        print station
+        print "-----------"
+        station_pose = self.region_dict["nodes"][station]["attr"]["pose"]
+        station_radius = self.region_dict["nodes"][station]["attr"]["radius"]
+        angle_threshold = self.region_dict["nodes"][station]["attr"]["angle_threshold"]
+
+        rospy.logwarn("Checking for agent in station region %s, with pose %s, radius %i, dist hysteresis %i, angle_hysteresis %i"
+                     %(station, station_pose, station_radius, dist_hysteresis, angle_hysteresis))
+        rospy.logwarn(pose)
+        rospy.logwarn("-----------")
+
 
         dist = self.dist_2d_err(pose, station_pose)
         angle = self.yaw_angle_err(pose, station_pose)
 
+        rospy.logwarn("dist is %i and angle is %i" %(dist, angle))
+
         # If distance is inferior to radius plus hysteresis,
         # or if angle is inferior to threshold plus hysteresis, agent is in of region
-        if (dist < radius + dist_hysteresis) and (angle < angle_threshold + angle_hysteresis):
+        if (dist < station_radius + dist_hysteresis) and (angle < angle_threshold + angle_hysteresis):
+            print "True"
             return True
         else:
+            print "False"
             return False
         
     #-------------------------------
@@ -147,7 +178,7 @@ class RegionStateMonitor(object):
     #-------------------------------
     # Pose format [[x,y], [phi]]
     # Pose msg is ROS geometry_msgs/Pose
-    def dist_2d_err(pose, center_pose):
+    def dist_2d_err(self, pose, center_pose):
         return math.sqrt((center_pose[0][0] - pose.position.x)**2
                        + (center_pose[0][1] - pose.position.y)**2)
 
@@ -157,13 +188,13 @@ class RegionStateMonitor(object):
     #-------------------------------
     # Pose format [[x,y], [phi]]
     # Pose msg is ROS geometry_msgs/Pose
-    def yaw_angle_err(pose, center_pose):
+    def yaw_angle_err(self, pose, center_pose):
         # Get euler angle from pose quaternion
         (roll, pitch, yaw) = euler_from_quaternion([pose.orientation.x,
                                                     pose.orientation.y,
                                                     pose.orientation.z,
                                                     pose.orientation.w])
-        return abs(center_yaw - center_pose[1][0])
+        return abs(yaw - center_pose[1][0])
 
     #-------------------------------------
     #        callback function for
@@ -177,6 +208,10 @@ class RegionStateMonitor(object):
             message_type = anymsg._connection_header['type']
             msg_class = get_message_class(message_type)
             pose_msg = msg_class().deserialize(anymsg._buff)
+
+            rospy.logwarn("Message received is:")
+            rospy.logwarn(pose_msg)
+            rospy.logwarn("-----------")
 
             #If message type is geometry_msgs/Pose
             if (message_type == 'geometry_msgs/Pose'):
