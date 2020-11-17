@@ -133,10 +133,6 @@ class Region2DPoseStateMonitor(object):
         square_pose = self.region_dict["nodes"][square]["attr"]["pose"]
         square_side_length = self.region_dict["nodes"][square]["attr"]["length"]
 
-        rospy.logwarn("Checking for agent in square region %s, with pose %s, side lenght %i and hysteresis %i" %(square, square_pose, square_side_length, hysteresis))
-        rospy.logwarn(pose)
-        rospy.logwarn("-----------")
-
         dist_x = abs(square_pose[0][0] - pose.position.x)
         dist_y = abs(square_pose[0][1] - pose.position.y)
 
@@ -162,12 +158,6 @@ class Region2DPoseStateMonitor(object):
         station_pose = self.region_dict["nodes"][station]["attr"]["pose"]
         station_radius = self.region_dict["nodes"][station]["attr"]["radius"]
         angle_threshold = self.region_dict["nodes"][station]["attr"]["angle_threshold"]
-
-        rospy.logwarn("Checking for agent in station region %s, with pose %s, radius %i, dist hysteresis %i, angle_hysteresis %i"
-                     %(station, station_pose, station_radius, dist_hysteresis, angle_hysteresis))
-        rospy.logwarn(pose)
-        rospy.logwarn("-----------")
-
 
         dist = self.dist_2d_err(pose, station_pose)
         angle = self.yaw_angle_err(pose, station_pose)
@@ -219,10 +209,6 @@ class Region2DPoseStateMonitor(object):
             message_type = anymsg._connection_header['type']
             msg_class = get_message_class(message_type)
             pose_msg = msg_class().deserialize(anymsg._buff)
-
-            rospy.logwarn("Message received is:")
-            rospy.logwarn(pose_msg)
-            rospy.logwarn("-----------")
 
             #If message type is geometry_msgs/Pose
             if (message_type == 'geometry_msgs/Pose'):

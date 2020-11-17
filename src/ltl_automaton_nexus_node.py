@@ -2,6 +2,7 @@
 import rospy
 import sys
 import yaml
+from copy import deepcopy
 #Import LTL automaton message definitions
 from ltl_automaton_msgs.msg import TransitionSystemState
 # Import state monitors
@@ -64,12 +65,6 @@ class LTLController(object):
                 self.monitors.append(nexus_load_monitor)
             else:
                 raise ValueError("state type [%s] is not supported by LTL Nexus" % (dimension))
-                # module_name = dimension+"_state_monitor"
-                # object_type = dimension.capitalize()+"StateMonitor"
-                # object_name = dimension+"_state_monitor"
-                # importlib.import_module(module_name, package=None)
-                # exec '%s = %r()' % (object_name, object_type)
-                # monitors.append(object_name)
 
     def set_pub_sub(self):
         # Setup LTL state publisher
@@ -86,19 +81,19 @@ class LTLController(object):
 
             # If current state is different from previous state
             # update message and publish it
-            if (self.curr_ltl_state[0] and self.curr_ltl_state[1]) and not (self.curr_ltl_state == self.prev_ltl_state):
-                rospy.loginfo("state has changed")
-                # Publish msg
-                self.ltl_state_msg.header.stamp = rospy.Time.now()
-                self.ltl_state_msg.states = self.curr_ltl_state
-                self.ltl_state_pub.publish(self.ltl_state_msg)
+            if not (self.curr_ltl_state == self.prev_ltl_state):
                 # Update previous state
-                self.prev_ltl_state = self.curr_ltl_state
+                self.prev_ltl_state = deepcopy(self.curr_ltl_state)
+                # If both states are initialized (not None), publish message
+                if (self.curr_ltl_state[0] and self.curr_ltl_state[1]):
+                    # Publish msg
+                    self.ltl_state_msg.header.stamp = rospy.Time.now()
+                    self.ltl_state_msg.states = self.curr_ltl_state
+                    self.ltl_state_pub.publish(self.ltl_state_msg)
+                
 
-            rospy.loginfo("State is %s" %(self.curr_ltl_state))
-
+            #rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
             rate.sleep()
-
 
 
 #==============================
