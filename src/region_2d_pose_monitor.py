@@ -26,9 +26,11 @@ class Region2DPoseStateMonitor(object):
     #-----------------
     def init_params(self):
         # Generate list of station regions
-        self.stations = self.get_stations(self.region_dict)
+        self.stations = filter(lambda elem: self.region_dict["nodes"][elem]["attr"]["type"] == "station",
+                               self.region_dict["nodes"].keys())
         # Generate list of square regions
-        self.squares = self.get_squares(self.region_dict)
+        self.squares = filter(lambda elem: self.region_dict["nodes"][elem]["attr"]["type"] == "square",
+                              self.region_dict["nodes"].keys())
 
     #----------------------------------------
     # Setup subscriber to agent localization
@@ -44,27 +46,55 @@ class Region2DPoseStateMonitor(object):
         # If current region is known, 
         if self.state:
             print "previous state exist"
+
+            # If current region is a station, we check that agent has left first
+            #--------------------------------------------------------------------
             # Check if current region was left (using hysteresis)
             if (self.region_dict["nodes"][self.state]["attr"]["type"] == "station"):
                 agent_has_left = not self.is_in_station(pose, self.state,
                                                               self.region_dict["nodes"][self.state]["attr"]["dist_hysteresis"],
                                                               self.region_dict["nodes"][self.state]["attr"]["angle_hysteresis"])
-            else:
-                agent_has_left = not self.is_in_square(pose, self.state,
-                                                             self.region_dict["nodes"][self.state]["attr"]["hysteresis"])
 
-            # If agent has left current regions:
-            if agent_has_left:
-                print "agent has left curr reg"
-                # Check all connected station
-                if self.update_state(pose, self.region_dict["nodes"][self.state]["connected_to"].keys()):
+                # If agent has left current regions, check all connected regions
+                if not agent_has_left:
+                    return True
+                else:
+                    print "agent has left curr reg"
+                    # Check all connected regions
+                    if self.update_state(pose, self.region_dict["nodes"][self.state]["connected_to"].keys()):
+                        return True
+            
+            # If current region is square check first if agent has enter a connected station
+            #--------------------------------------------------------------------------------
+            # stations are overlaid on top of squares and should be check even if agent has not left square
+            else:
+                # Get list of connected station and check if in it
+                connected_stations_list = filter(lambda elem: elem in self.stations,
+                                                 self.region_dict["nodes"][self.state]["connected_to"].keys())
+                # Check if agent is in the stations
+                if self.update_state(pose, connected_stations_list):
                     return True
 
+                # If agent is not in station, check is previous square regions has been left
+                agent_has_left = not self.is_in_square(pose, self.state,
+                                                             self.region_dict["nodes"][self.state]["attr"]["hysteresis"])
+                # If agent has left current regions, check all connected regions
+                if not agent_has_left:
+                    return True
+                else:
+                    print "agent has left curr reg"
+                    # Check all connected squares
+                    connected_stations_list = filter(lambda elem: elem in self.squares,
+                                                     self.region_dict["nodes"][self.state]["connected_to"].keys())
+
+                    if self.update_state(pose, self.region_dict["nodes"][self.state]["connected_to"].keys()):
+                        return True
+
+
         # If not found in connected regions or no previous region, check all regions
-        else:
-            print "previous state does not exist or agent not in connected regions"
-            if self.update_state(pose, self.region_dict["nodes"].keys()):
-                return True
+        print "previous state does not exist or agent not in connected regions"
+        if self.update_state(pose, self.region_dict["nodes"].keys()):
+            return True
 
         # Return false if region could not be found from pose
         return False
@@ -90,27 +120,6 @@ class Region2DPoseStateMonitor(object):
                     self.state = str(reg)
                     print "agent found in reg %s" %(reg)
                     return True
-                    
-    #-------------------------------------------------------------
-    # Filter keys by returning only "station" regions from a dict
-    #-------------------------------------------------------------
-    def get_stations(self, region_dict):
-        print self.region_dict.keys()
-        stations = []
-        for reg in region_dict["nodes"]:
-            if (region_dict["nodes"][reg]["attr"]["type"] == "station"):
-                stations.append(reg)
-        return stations
-
-    #------------------------------------------------------------
-    # Filter keys by returning only "square" regions from a dict
-    #------------------------------------------------------------
-    def get_squares(self, region_dict):
-        squares = []
-        for reg in region_dict["nodes"]:
-            if (region_dict["nodes"][reg]["attr"]["type"] == "square"):
-                squares.append(reg)
-        return squares
 
     #------------------------------------
     # Check if pose is in a given square
@@ -131,12 +140,14 @@ class Region2DPoseStateMonitor(object):
         dist_x = abs(square_pose[0][0] - pose.position.x)
         dist_y = abs(square_pose[0][1] - pose.position.y)
 
-        rospy.logwarn("dist x is %i and dist y is %i" %(dist_x, dist_y))
+        rospy.logwarn("dist x is %i and dist y is %i, AND square_side_length/2 + hysteresis is %f" %(dist_x, dist_y, (float)(square_side_length)/2 + hysteresis))
 
         # If distance to center on both x and y is inferior to half of the square side lenght plus hysteresis, agent is in region
-        if (dist_x/2 < square_side_length + hysteresis) and (dist_y/2 < square_side_length + hysteresis):
+        if (dist_x < (float)(square_side_length)/2 + hysteresis) and (dist_y < (float)(square_side_length)/2 + hysteresis):
+            print "is in square"
             return True
         else:
+            print "is not in square"
             return False
 
     #-------------------------------------
