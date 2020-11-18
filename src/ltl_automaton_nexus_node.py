@@ -68,7 +68,7 @@ class LTLController(object):
 
     def set_pub_sub(self):
         # Setup LTL state publisher
-        self.ltl_state_pub = rospy.Publisher("nexus_ltl_state", TransitionSystemState, latch=True, queue_size=10)
+        self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemState, latch=True, queue_size=10)
 
     def main_loop(self):
         self.curr_ltl_state = [None, None]
