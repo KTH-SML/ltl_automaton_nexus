@@ -2,12 +2,17 @@
 import rospy
 import sys
 import yaml
+import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
 from ltl_automaton_msgs.msg import TransitionSystemState
 # Import state monitors
 from region_2d_pose_monitor import Region2DPoseStateMonitor
 from nexus_load_monitor import NexusLoadMonitor
+# Import modules for commanding the nexus
+import actionlib
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from geometry_msgs.msg import PoseStamped
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -39,6 +44,14 @@ class LTLController(object):
         self.ltl_state_msg = TransitionSystemState()
         self.ltl_state_msg.state_dimension_names = self.transition_system["state_dim"]
 
+        # Initialize running time and index of command received and executed
+        self.t0 = rospy.Time.now()
+        self.t = self.t0
+        self.plan_index = 0
+
+        # Setup navigation commands for nexus
+        self.navigation = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+
     # Import TS and action attributes from file
     def import_ts_from_file(self, transition_system_textfile):
         try:
@@ -69,6 +82,71 @@ class LTLController(object):
     def set_pub_sub(self):
         # Setup LTL state publisher
         self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemState, latch=True, queue_size=10)
+
+        # Setup subscriber to ltl_automaton_core next_move_cmd
+        self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
+
+    def next_move_callback(self, msg):
+        '''Recieve next_move_cmd from ltl_automaton_core planner and convert into robot action to implement'''
+
+        # Update running time and augment plan index
+        self.t = rospy.Time.now()-self.t0
+        self.plan_index += 1
+
+        # Extract command message string
+        cmd_str =  msg.data
+        action_dict = None
+
+        # Check if next_move_cmd is 'None', which is output by ltl_automaton_core if the current state is not in the TS
+        if cmd_str == "None":
+
+            # To do: Handle when ltl_automaton_core encounteres state outside of TS (i.e. next_move_cmd = 'None')
+            rospy.logwarn('None next_move_cmd sent to LTL Nexus')
+        else:
+
+            # Check if next_move_cmd is in list of actions from transition_system
+            for act in self.transition_system['actions']:
+                if str(act) == cmd_str:
+
+                    # Extract action types, attributes, etc. in dictionary
+                    action_dict = self.transition_system['actions'][str(act)]
+
+                    break
+
+            # Raise error if next_move_cmd does not exist in transition system
+            if not(action_dict):
+                raise ValueError("next_move_cmd not found in LTL Nexus transition system")
+
+        # Send action_dict to nexus_action()
+        self.nexus_action(action_dict)
+
+    def nexus_action(self, act_dict):
+        '''Read components of act_dict associated with current command and output control to nexus'''    
+
+        if act_dict['type'] == 'move':
+            # Extract pose to move to:
+            pose = act_dict['attr']['pose']
+
+            # Set new navigation goal and send
+            GoalMsg = MoveBaseGoal()
+            GoalMsg.target_pose.header.seq = self.plan_index
+            GoalMsg.target_pose.header.stamp = self.t
+            GoalMsg.target_pose.header.frame_id = 'map'
+            GoalMsg.target_pose.pose.position.x = pose[0][0]
+            GoalMsg.target_pose.pose.position.y = pose[0][1]
+            #quaternion = quaternion_from_euler(0, 0, goal[2])
+            GoalMsg.target_pose.pose.orientation.x = pose[1][1]
+            GoalMsg.target_pose.pose.orientation.y = pose[1][2]
+            GoalMsg.target_pose.pose.orientation.z = pose[1][3]
+            GoalMsg.target_pose.pose.orientation.w = pose[1][0]
+            self.navigation.send_goal(GoalMsg)
+
+        #if act_dict['type'] == 'nexus_pick':
+            # TO DO
+            
+
+        #if act_dict['type'] == 'nexus_drop':
+            # TO DO
 
     def main_loop(self):
         self.curr_ltl_state = [None, None]
