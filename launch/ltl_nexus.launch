@@ -8,9 +8,9 @@
   <!-- Agent name -->
   <param name="agent_name" type="string" value="$(arg agent_name)" />
   <!-- hard and soft task parameters -->
-  <rosparam command="load" file="$(find ltl_automaton_core)/config/test_ltl_formula.yaml" />
+  <rosparam command="load" file="$(find ltl_automaton_nexus)/config/nexus_ltl_formula.yaml" />
   <!-- Transition system -->
-  <param name="transition_system_textfile" type="str" textfile="$(find ltl_automaton_core)/config/test_ts.yaml" />
+  <param name="transition_system_textfile" type="str" textfile="$(find ltl_automaton_nexus)/config/nexus_ts.yaml" />
 
   <!-- Run LTL planner node -->
   <include file="$(find ltl_automaton_core)/launch/ltl_planner.launch" >

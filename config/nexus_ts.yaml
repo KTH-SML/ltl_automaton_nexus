@@ -24,22 +24,43 @@ state_models:
                     r3: "goto_r3"
             r2:
                 attr:
-                    type: "station"
+                    type: "square"
+                    pose: [[0,1], [0]]
+                    length: 1
+                    hysteresis: 0.05
+                connected_to:
+                    r1: "goto_r1"
+                    r4: "goto_r4"
+                    r5: "goto_r5"
+            r3:
+                attr:
+                    type: "square"
+                    pose: [[1,0], [0]]
+                    length: 1
+                    hysteresis: 0.05
+                connected_to:
+                    r1: "goto_r1"
+                    r4: "goto_r4"
+            r4:
+                attr:
+                    type: "square"
                     pose: [[1,1], [0]]
+                    length: 1
+                    hysteresis: 0.05
+                connected_to:
+                    r2: "goto_r2"
+                    r3: "goto_r3"
+            r5:
+                attr:
+                    type: "station"
+                    pose: [[0,1.2], [0]]
                     radius: 0.1
                     angle_threshold: 0.1
                     dist_hysteresis: 0.03
                     angle_hysteresis: 0.1
                 connected_to:
-                    r1: "goto_r1"
-            r3:
-                attr:
-                    type: "square"
-                    pose: [[2,1], [0]]
-                    length: 1
-                    hysteresis: 0.05
-                connected_to:
-                    r1: "goto_r1"
+                    r2: "goto_r2"
+
     nexus_load:
         ts_type: "nexus_load"
         initial: "unloaded"
@@ -61,12 +82,22 @@ actions:
         type: "move"
         weight: 10
         attr:
-            pose: [[1,1,0], [0,0,0,1]]
+            pose: [[0,1,0], [0,0,0,1]]
     goto_r3:
         type: "move"
         weight: 10
         attr:
-            pose: [[2,1,0], [0,0,0,1]]
+            pose: [[1,0,0], [0,0,0,1]]
+    goto_r4:
+        type: "move"
+        weight: 10
+        attr:
+            pose: [[1,1,0], [0,0,0,1]]
+    goto_r5:
+        type: "move"
+        weight: 10
+        attr:
+            pose: [[0,1.2,0], [0,0,0,1]]
     pick:
         type: "nexus_pick"
         weight: 10
