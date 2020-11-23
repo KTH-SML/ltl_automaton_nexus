@@ -6,13 +6,13 @@ import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
 from ltl_automaton_msgs.msg import TransitionSystemState
-# Import state monitors
-from region_2d_pose_monitor import Region2DPoseStateMonitor
-from nexus_load_monitor import NexusLoadMonitor
+# Import transition system loader
+from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file
 # Import modules for commanding the nexus
 import actionlib
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import String, Bool
 
 #=================================================================
 #  Interfaces between LTL planner node and lower level controls
@@ -35,10 +35,13 @@ class LTLController(object):
 
     # Get params from ROS param server and config files
     def init_params(self):
+        self.curr_ltl_state = [None, None]
+        self.prev_ltl_state = [None, None]
+
         self.agent_name = rospy.get_param('agent_name', "nexus")
 
         # Get TS from param
-        self.transition_system = self.import_ts_from_file(rospy.get_param('transition_system_textfile'))
+        self.transition_system = import_ts_from_file(rospy.get_param('transition_system_textfile'))
 
         # Init state message with TS
         self.ltl_state_msg = TransitionSystemState()
@@ -52,30 +55,20 @@ class LTLController(object):
         # Setup navigation commands for nexus
         self.navigation = actionlib.SimpleActionClient("move_base", MoveBaseAction)
 
-    # Import TS and action attributes from file
-    def import_ts_from_file(self, transition_system_textfile):
-        try:
-            # Get dictionary from yaml text file
-            transition_system = yaml.load(transition_system_textfile)
-            # TODO: Add a proper parse and check (dimensions, attr,...)
-            return transition_system
-        except:
-            raise ValueError("cannot load transition system from textfile")
-
     #-------------------------------------------------------------------------
     # Create monitoring object for every state dimension in transition system
     #-------------------------------------------------------------------------
     def create_monitors(self):
-        self.monitors = []
-        for dimension in self.transition_system["state_dim"]:
+        for i in range(len(self.transition_system["state_dim"])):
             print "checking dimension states"
+            dimension = self.transition_system["state_dim"][i]
             print dimension
             if (dimension == "2d_pose_region"):
-                region_2d_pose_monitor = Region2DPoseStateMonitor(self.transition_system["state_models"]["2d_pose_region"], self.agent_name+"_pose")
-                self.monitors.append(region_2d_pose_monitor)
+                # Setup subscriber to 2D pose region monitor
+                self.nexus_region_sub = rospy.Subscriber("current_region", String, self.region_state_callback, i, queue_size=100)
             elif (dimension == "nexus_load"):
-                nexus_load_monitor = NexusLoadMonitor(self.agent_name+"_load")
-                self.monitors.append(nexus_load_monitor)
+                # Setup subscriber to nexus load state
+                self.nexus_load_sub = rospy.Subscriber("nexus_load_sensor", Bool, self.load_state_callback, i, queue_size=100)
             else:
                 raise ValueError("state type [%s] is not supported by LTL Nexus" % (dimension))
 
@@ -85,6 +78,15 @@ class LTLController(object):
 
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
+
+    def load_state_callback(self, msg, id):
+        if msg.data:
+            self.curr_ltl_state[id] = "loaded"
+        else:
+            self.curr_ltl_state[id] = "unloaded"
+
+    def region_state_callback(self, msg, id):
+        self.curr_ltl_state[id] = msg.data
 
     def next_move_callback(self, msg):
         '''Recieve next_move_cmd from ltl_automaton_core planner and convert into robot action to implement'''
@@ -149,14 +151,8 @@ class LTLController(object):
             # TO DO
 
     def main_loop(self):
-        self.curr_ltl_state = [None, None]
-        self.prev_ltl_state = [None, None]
         rate = rospy.Rate(5)
         while not rospy.is_shutdown():
-            # Check state
-            for i in range(len(self.monitors)):
-                self.curr_ltl_state[i] = self.monitors[i].state
-
             # If current state is different from previous state
             # update message and publish it
             if not (self.curr_ltl_state == self.prev_ltl_state):
@@ -171,8 +167,7 @@ class LTLController(object):
                 
 
             #rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
-            rate.sleep()
-
+            rate.sleep()    
 
 #==============================
 #             Main

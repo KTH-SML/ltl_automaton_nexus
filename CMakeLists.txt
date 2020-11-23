@@ -8,7 +8,8 @@ project(ltl_automaton_nexus)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  ltl_automaton_core
+  ltl_automaton_planner
+  ltl_automaton_std_transition_systems
   ltl_automaton_msgs
   roscpp
   rospy
