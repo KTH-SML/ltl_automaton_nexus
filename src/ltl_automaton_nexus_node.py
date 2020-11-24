@@ -33,7 +33,9 @@ class LTLController(object):
 
         self.main_loop()
 
+    #---------------------------------------------------
     # Get params from ROS param server and config files
+    #---------------------------------------------------
     def init_params(self):
         self.curr_ltl_state = [None, None]
         self.prev_ltl_state = [None, None]
@@ -68,10 +70,13 @@ class LTLController(object):
                 self.nexus_region_sub = rospy.Subscriber("current_region", String, self.region_state_callback, i, queue_size=100)
             elif (dimension == "nexus_load"):
                 # Setup subscriber to nexus load state
-                self.nexus_load_sub = rospy.Subscriber("nexus_load_sensor", Bool, self.load_state_callback, i, queue_size=100)
+                self.nexus_load_sub = rospy.Subscriber("current_load_state", String, self.load_state_callback, i, queue_size=100)
             else:
                 raise ValueError("state type [%s] is not supported by LTL Nexus" % (dimension))
 
+    #----------------------------------
+    # Setup subscribers and publishers
+    #----------------------------------
     def set_pub_sub(self):
         # Setup LTL state publisher
         self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemState, latch=True, queue_size=10)
@@ -79,15 +84,21 @@ class LTLController(object):
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
 
+    #----------------------------------------
+    # Handle message from load state monitor
+    #----------------------------------------
     def load_state_callback(self, msg, id):
-        if msg.data:
-            self.curr_ltl_state[id] = "loaded"
-        else:
-            self.curr_ltl_state[id] = "unloaded"
+        self.curr_ltl_state[id] = msg.data
 
+    #------------------------------------------
+    # Handle message from region state monitor
+    #------------------------------------------
     def region_state_callback(self, msg, id):
         self.curr_ltl_state[id] = msg.data
 
+    #---------------------------------------
+    # Handle next move command from planner
+    #---------------------------------------
     def next_move_callback(self, msg):
         '''Recieve next_move_cmd from ltl_automaton_core planner and convert into robot action to implement'''
 
@@ -151,7 +162,7 @@ class LTLController(object):
             # TO DO
 
     def main_loop(self):
-        rate = rospy.Rate(5)
+        rate = rospy.Rate(50)
         while not rospy.is_shutdown():
             # If current state is different from previous state
             # update message and publish it
@@ -165,7 +176,6 @@ class LTLController(object):
                     self.ltl_state_msg.states = self.curr_ltl_state
                     self.ltl_state_pub.publish(self.ltl_state_msg)
                 
-
             #rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
             rate.sleep()    
 
