@@ -2,7 +2,7 @@
 <launch>
   <!-- Arguments -->
   <arg name="agent_name" default="nexus"/>
-  <arg name="initial_beta" default="1000.0"/>
+  <arg name="initial_beta" default="10.0"/>
   <arg name="gamma" default="10.0"/>
   <arg name="initial_ts_state_from_agent" default="False"/>
 
