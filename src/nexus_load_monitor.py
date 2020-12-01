@@ -69,5 +69,13 @@ class NexusLoadStateMonitor(object):
 #============================
 if __name__ == '__main__':
     rospy.init_node('nexus_load_monitor',anonymous=False)
-    nexus_load_monitor = NexusLoadStateMonitor()
-    rospy.spin()
+    try:
+        nexus_load_monitor = NexusLoadStateMonitor()
+        rospy.spin()
+    except ValueError as e:
+        rospy.logerr("Nexus load Monitor: %s" %(e))
+        sys.exit(0)
+
+
+
+    
