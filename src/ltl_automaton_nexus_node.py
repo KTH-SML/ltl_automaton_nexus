@@ -37,9 +37,6 @@ class LTLController(object):
     # Get params from ROS param server and config files
     #---------------------------------------------------
     def init_params(self):
-        self.curr_ltl_state = [None, None]
-        self.prev_ltl_state = [None, None]
-
         self.agent_name = rospy.get_param('agent_name', "nexus")
 
         # Get TS from param
@@ -54,14 +51,18 @@ class LTLController(object):
         self.t = self.t0
         self.plan_index = 0
 
-        # Setup navigation commands for nexus
-        self.navigation = actionlib.SimpleActionClient("move_base", MoveBaseAction)
-
     #-------------------------------------------------------------------------
     # Create monitoring object for every state dimension in transition system
     #-------------------------------------------------------------------------
     def create_monitors(self):
-        for i in range(len(self.transition_system["state_dim"])):
+        number_of_dimensions = len(self.transition_system["state_dim"])
+
+        # Init LTL state variables
+        self.curr_ltl_state = [None for element in range(number_of_dimensions)]
+        self.prev_ltl_state = deepcopy(self.curr_ltl_state)
+
+        # Setup subscribers
+        for i in range(number_of_dimensions):
             print "checking dimension states"
             dimension = self.transition_system["state_dim"][i]
             print dimension
@@ -78,11 +79,18 @@ class LTLController(object):
     # Setup subscribers and publishers
     #----------------------------------
     def set_pub_sub(self):
+        # Setup navigation commands for nexus
+        self.navigation = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+        rospy.loginfo("LTL automaton Nexus node: waiting for nexus move base action server...")
+        self.navigation.wait_for_server() # wait for action server to start
+
         # Setup LTL state publisher
         self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemState, latch=True, queue_size=10)
 
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
+
+        rospy.loginfo("LTL automaton Nexus node: initialized!")
 
     #----------------------------------------
     # Handle message from load state monitor
@@ -148,10 +156,10 @@ class LTLController(object):
             GoalMsg.target_pose.pose.position.x = pose[0][0]
             GoalMsg.target_pose.pose.position.y = pose[0][1]
             #quaternion = quaternion_from_euler(0, 0, goal[2])
-            GoalMsg.target_pose.pose.orientation.x = pose[1][1]
-            GoalMsg.target_pose.pose.orientation.y = pose[1][2]
-            GoalMsg.target_pose.pose.orientation.z = pose[1][3]
-            GoalMsg.target_pose.pose.orientation.w = pose[1][0]
+            GoalMsg.target_pose.pose.orientation.x = pose[1][0]
+            GoalMsg.target_pose.pose.orientation.y = pose[1][1]
+            GoalMsg.target_pose.pose.orientation.z = pose[1][2]
+            GoalMsg.target_pose.pose.orientation.w = pose[1][3]
             self.navigation.send_goal(GoalMsg)
 
         #if act_dict['type'] == 'nexus_pick':
@@ -169,14 +177,14 @@ class LTLController(object):
             if not (self.curr_ltl_state == self.prev_ltl_state):
                 # Update previous state
                 self.prev_ltl_state = deepcopy(self.curr_ltl_state)
-                # If both states are initialized (not None), publish message
-                if (self.curr_ltl_state[0] and self.curr_ltl_state[1]):
+                # If all states are initialized (not None), publish message
+                if all([False for element in self.curr_ltl_state if element == None]):
                     # Publish msg
                     self.ltl_state_msg.header.stamp = rospy.Time.now()
                     self.ltl_state_msg.states = self.curr_ltl_state
                     self.ltl_state_pub.publish(self.ltl_state_msg)
                 
-            #rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
+            # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
             rate.sleep()    
 
 #==============================
