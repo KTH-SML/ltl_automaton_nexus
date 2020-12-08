@@ -5,7 +5,7 @@ import yaml
 import std_msgs
 from copy import deepcopy
 #Import LTL automaton message definitions
-from ltl_automaton_msgs.msg import TransitionSystemState
+from ltl_automaton_msgs.msg import TransitionSystemStateStamped, TransitionSystemState
 # Import transition system loader
 from ltl_automaton_planner.ltl_automaton_utilities import import_ts_from_file
 # Import modules for commanding the nexus
@@ -43,8 +43,8 @@ class LTLController(object):
         self.transition_system = import_ts_from_file(rospy.get_param('transition_system_textfile'))
 
         # Init state message with TS
-        self.ltl_state_msg = TransitionSystemState()
-        self.ltl_state_msg.state_dimension_names = self.transition_system["state_dim"]
+        self.ltl_state_msg = TransitionSystemStateStamped()
+        self.ltl_state_msg.ts_state.state_dimension_names = self.transition_system["state_dim"]
 
         # Initialize running time and index of command received and executed
         self.t0 = rospy.Time.now()
@@ -85,7 +85,7 @@ class LTLController(object):
         self.navigation.wait_for_server() # wait for action server to start
 
         # Setup LTL state publisher
-        self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemState, latch=True, queue_size=10)
+        self.ltl_state_pub = rospy.Publisher("ts_state", TransitionSystemStateStamped, latch=True, queue_size=10)
 
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
@@ -181,7 +181,7 @@ class LTLController(object):
                 if all([False for element in self.curr_ltl_state if element == None]):
                     # Publish msg
                     self.ltl_state_msg.header.stamp = rospy.Time.now()
-                    self.ltl_state_msg.states = self.curr_ltl_state
+                    self.ltl_state_msg.ts_state.states = self.curr_ltl_state
                     self.ltl_state_pub.publish(self.ltl_state_msg)
                 
             # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
