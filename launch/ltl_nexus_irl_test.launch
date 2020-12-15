@@ -19,11 +19,17 @@
 
   <!-- Run LTL planner node -->
   <include file="$(find ltl_automaton_planner)/launch/ltl_planner.launch" >
-    <arg name="initial_ts_state_from_agent" default="False"/>
+    <arg name="initial_ts_state_from_agent" default="True"/>
   </include>
-
-  <!-- Run Nexus LTL node with the 2D pose region monitor-->
-  <node name="ltl_automaton_nexus_node" pkg="ltl_automaton_nexus" type="ltl_automaton_nexus_node.py" output="screen" />
-  <node name="$(arg agent_name)_region_2d_pose_monitor" pkg="ltl_automaton_std_transition_systems" type="region_2d_pose_monitor.py" output="screen" />
+  <group ns="ltl_planner/plugin">
+      <group ns="TrapDetectionPlugin">
+          <param name="path" value="ltl_automaton_hil_mic.trap_detection"/>
+          <param name="args" value=""/>
+      </group>
+      <group ns="IRLPlugin">
+          <param name="path" value="ltl_automaton_hil_mic.inverse_reinforcement_learning"/>
+          <param name="args" value=""/>
+      </group>  
+  </group>
 
 </launch>
