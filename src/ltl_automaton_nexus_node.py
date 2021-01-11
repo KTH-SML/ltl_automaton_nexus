@@ -46,10 +46,19 @@ class LTLController(object):
         self.ltl_state_msg = TransitionSystemStateStamped()
         self.ltl_state_msg.ts_state.state_dimension_names = self.transition_system["state_dim"]
 
+        # Get obstacle name list, if any
+        obstacle_name_list = get_param('obstacle_names', [])
+        self.obstacles = {}
+        # if obstacle name exist, initialize dict
+        if obstacle_name_list:
+            for obstacle_name in obstacle_name_list:
+                self.obstacles.update({str(obstacle_name): ""})
+
         # Initialize running time and index of command received and executed
         self.t0 = rospy.Time.now()
         self.t = self.t0
         self.plan_index = 0
+        self.next_action = {}
 
     #-------------------------------------------------------------------------
     # Create monitoring object for every state dimension in transition system
@@ -90,6 +99,10 @@ class LTLController(object):
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
 
+        # Setup obstacle region subcribers
+        for obstacle_name in self.obstacles.keys():
+            rospy.Subscriber("/"+obstacle_name+"/current_region", String, self.obstacle_region_callback, obstacle_name, queue_size=1)
+
         rospy.loginfo("LTL automaton Nexus node: initialized!")
 
     #----------------------------------------
@@ -103,6 +116,12 @@ class LTLController(object):
     #------------------------------------------
     def region_state_callback(self, msg, id):
         self.curr_ltl_state[id] = msg.data
+
+    #------------------------------------------------
+    # Handle message from obstacle region monitoring
+    #------------------------------------------------
+    def obstacle_region_callback(self, msg, obstacle_name):
+        self.obstacles[obstacle_name] = msg.data
 
     #---------------------------------------
     # Handle next move command from planner
@@ -139,7 +158,7 @@ class LTLController(object):
                 raise ValueError("next_move_cmd not found in LTL Nexus transition system")
 
         # Send action_dict to nexus_action()
-        self.nexus_action(action_dict)
+        self.next_action = action_dict
 
     def nexus_action(self, act_dict):
         '''Read components of act_dict associated with current command and output control to nexus'''    
@@ -147,6 +166,13 @@ class LTLController(object):
         if act_dict['type'] == 'move':
             # Extract pose to move to:
             pose = act_dict['attr']['pose']
+            region = act_dict['attr']['region']
+
+            # Check if region is already occupied
+            if region in self.obstacles.values():
+                # Region is already occupied, wait before moving
+                return False
+
 
             # Set new navigation goal and send
             GoalMsg = MoveBaseGoal()
@@ -162,6 +188,8 @@ class LTLController(object):
             GoalMsg.target_pose.pose.orientation.w = pose[1][3]
             self.navigation.send_goal(GoalMsg)
 
+            return True
+
         #if act_dict['type'] == 'nexus_pick':
             # TO DO
             
@@ -169,6 +197,9 @@ class LTLController(object):
         #if act_dict['type'] == 'nexus_drop':
             # TO DO
 
+    #-----------
+    # Main loop
+    #-----------
     def main_loop(self):
         rate = rospy.Rate(50)
         while not rospy.is_shutdown():
@@ -183,7 +214,13 @@ class LTLController(object):
                     self.ltl_state_msg.header.stamp = rospy.Time.now()
                     self.ltl_state_msg.ts_state.states = self.curr_ltl_state
                     self.ltl_state_pub.publish(self.ltl_state_msg)
-                
+
+            # If waiting for obstcles, check again
+            if self.next_action:
+                # If action returns true, action was carried out and is reset
+                if self.nexus_action(self.next_action):
+                    self.nexus_action = {}
+                    
             # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
             rate.sleep()    
 
