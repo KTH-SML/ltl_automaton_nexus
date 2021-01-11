@@ -19,7 +19,7 @@
 
   <!-- Run LTL planner node -->
   <include file="$(find ltl_automaton_planner)/launch/ltl_planner.launch" >
-    <arg name="initial_ts_state_from_agent" default="True"/>
+    <arg name="initial_ts_state_from_agent" default="False"/>
   </include>
   <group ns="ltl_planner/plugin">
       <group ns="TrapDetectionPlugin">
