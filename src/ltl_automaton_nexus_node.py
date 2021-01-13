@@ -54,6 +54,11 @@ class LTLController(object):
             for obstacle_name in obstacle_name_list:
                 self.obstacles.update({str(obstacle_name): ""})
 
+        # Init feedback variables
+        self.pick_box_feedback = False
+        self.pick_assembly_feedback = False
+        self.deliver_assembly_feedback = False
+
         # Initialize running time and index of command received and executed
         self.t0 = rospy.Time.now()
         self.t = self.t0
@@ -99,6 +104,15 @@ class LTLController(object):
         # Setup subscriber to ltl_automaton_core next_move_cmd
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
 
+        # Setup assembly task (pick box) acknowkedge topic subscriber
+        self.pick_box_feedback_sub = rospy.Subscriber("placed_box_ack", std_msgs.msg.Bool, self.pick_box_feedback_callback)
+
+        # Setup assembly task (pick assembly) acknowkedge topic subscriber
+        self.pick_assembly_feedback_sub = rospy.Subscriber("placed_assembly_ack", std_msgs.msg.Bool, self.pick_assembly_feedback_callback)
+
+        # Setup delivery task acknowledge topic subscriber
+        self.deliver_assembly_feedback_sub = rospy.Subscriber("delivered_assembly_ack", std_msgs.msg.Bool, self.deliver_assembly_feedback_callback)
+
         # Setup obstacle region subcribers
         for obstacle_name in self.obstacles.keys():
             rospy.Subscriber("/"+obstacle_name+"/current_region", String, self.obstacle_region_callback, obstacle_name, queue_size=1)
@@ -122,6 +136,24 @@ class LTLController(object):
     #------------------------------------------------
     def obstacle_region_callback(self, msg, obstacle_name):
         self.obstacles[obstacle_name] = msg.data
+
+    #---------------------------------
+    # Handle pick box acknowledgement
+    #---------------------------------
+    def pick_box_feedback_callback(self, msg):
+        self.pick_box_feedback = msg.data
+
+    #--------------------------------------
+    # Handle pick assembly acknowledgement
+    #--------------------------------------
+    def pick_assembly_feedback_callback(self, msg):
+        self.pick_assembly_feedback = msg.data
+
+    #--------------------------------------
+    # Handle pick assembly acknowledgement
+    #--------------------------------------
+    def deliver_assembly_feedback_callback(self, msg):
+        self.deliver_assembly_feedback = msg.data
 
     #---------------------------------------
     # Handle next move command from planner
@@ -160,9 +192,15 @@ class LTLController(object):
         # Send action_dict to nexus_action()
         self.next_action = action_dict
 
+    #----------------------
+    # Execute given action
+    #----------------------
     def nexus_action(self, act_dict):
         '''Read components of act_dict associated with current command and output control to nexus'''    
 
+        #--------------
+        # Move command
+        #--------------
         if act_dict['type'] == 'move':
             # Extract pose to move to:
             pose = act_dict['attr']['pose']
@@ -172,7 +210,6 @@ class LTLController(object):
             if region in self.obstacles.values():
                 # Region is already occupied, wait before moving
                 return False
-
 
             # Set new navigation goal and send
             GoalMsg = MoveBaseGoal()
@@ -190,12 +227,41 @@ class LTLController(object):
 
             return True
 
-        #if act_dict['type'] == 'nexus_pick':
-            # TO DO
+        #---------------------------
+        # Pick box at assembly line
+        #---------------------------
+        if act_dict['type'] == 'pick_box':
+            # Wait for acknowledgement of placed box on nexus
+            # return false until feedback as been received
+            if not self.pick_box_feedback:
+                return False
+            else:
+                self.pick_box_feedback = False
+                return True
             
+        #-------------------------------------
+        # Pick full assembly at assembly line
+        #-------------------------------------
+        if act_dict['type'] == 'pick_assembly':
+            # Wait for acknowledgement of placed assembly on nexus
+            # return false until feedback as been received
+            if not self.pick_assembly_feedback:
+                return False
+            else:
+                self.pick_assembly_feedback = False
+                return True
 
-        #if act_dict['type'] == 'nexus_drop':
-            # TO DO
+        #-----------------------
+        # Deliver full assembly
+        #-----------------------
+        if act_dict['type'] == 'deliver_assembly':
+            # Wait for acknowledgement of assembly delivery from nexus
+            # return false until feedback as been received
+            if not self.deliver_assembly_feedback:
+                return False
+            else:
+                self.deliver_assembly_feedback = False
+                return True
 
     #-----------
     # Main loop
@@ -215,7 +281,7 @@ class LTLController(object):
                     self.ltl_state_msg.ts_state.states = self.curr_ltl_state
                     self.ltl_state_pub.publish(self.ltl_state_msg)
 
-            # If waiting for obstcles, check again
+            # If waiting for obstacles or acknowledgement, check again
             if self.next_action:
                 # If action returns true, action was carried out and is reset
                 if self.nexus_action(self.next_action):

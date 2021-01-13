@@ -71,12 +71,13 @@ state_models:
         nodes:
             unloaded:
                 connected_to:
-                    loaded: "pick"
-                    unloaded: "drop"
-            loaded:
+                    loaded_box: "pick_box"
+            loaded_box:
                 connected_to:
-                    loaded: "pick"
-                    unloaded: "drop"
+                    loaded_assembly: "pick_assembly"
+            loaded_assembly:
+                connected_to:
+                    unloaded: "deliver_assembly"
 
 actions:
     goto_r1:
@@ -109,11 +110,14 @@ actions:
         attr:
             region: r5
             pose: [[0,1.2,0], [0,0,0,1]]
-    pick:
-        type: "nexus_pick"
+    pick_box:
+        type: "pick_box"
         weight: 10
-    drop:
-        type: "nexus_drop"
+    pick_assembly:
+    	type: "pick_assembly"
+    	weight: 10	
+    deliver_assembly:
+        type: "deliver_assembly"
         weight: 10
              
 
