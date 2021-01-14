@@ -83,41 +83,49 @@ actions:
     goto_r1:
         type: "move"
         weight: 10
+        guard: "1"
         attr:
             region: r1
             pose: [[0,0,0], [0,0,0,1]]
     goto_r2:
         type: "move"
         weight: 10
+        guard: "1"
         attr:
             region: r2
             pose: [[0,1,0], [0,0,0,1]]
     goto_r3:
         type: "move"
         weight: 10
+        guard: "1"
         attr:
             region: r3
             pose: [[1,0,0], [0,0,0,1]]
     goto_r4:
         type: "move"
         weight: 10
+        guard: "1"
         attr:
             region: r4
             pose: [[1,1,0], [0,0,0,1]]
     goto_r5:
         type: "move"
         weight: 10
+        guard: "1"
         attr:
             region: r5
             pose: [[0,1.2,0], [0,0,0,1]]
     pick_box:
         type: "pick_box"
         weight: 10
+        guard: "1"
     pick_assembly:
     	type: "pick_assembly"
-    	weight: 10	
+    	weight: 10
+    	guard: "1"
     deliver_assembly:
         type: "deliver_assembly"
         weight: 10
+        guard: "1"
              
 
