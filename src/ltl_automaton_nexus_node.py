@@ -49,6 +49,7 @@ class LTLController(object):
         # Get obstacle name list, if any
         obstacle_name_list = get_param('obstacle_names', [])
         self.obstacles = {}
+        self.occupied_regions = []
         # if obstacle name exist, initialize dict
         if obstacle_name_list:
             for obstacle_name in obstacle_name_list:
@@ -135,7 +136,18 @@ class LTLController(object):
     # Handle message from obstacle region monitoring
     #------------------------------------------------
     def obstacle_region_callback(self, msg, obstacle_name):
-        self.obstacles[obstacle_name] = msg.data
+        # Get occupied region for the obstacle
+        self.obstacles[obstacle_name] = [msg.data]
+
+        # Check if region is a station, and add connected cells if it is the case
+        if self.transition_system['state_models']['2d_pose_region']['nodes'][msg.data]['attr']['type'] == 'station':
+            for connected_cell in self.transition_system['state_models']['2d_pose_region']['nodes'][msg.data]['connected_to'].keys()
+                self.obstacles[obstacle_name].append(str(connected_cell))
+
+        # Rebuild occupied regions list
+        self.occupied_regions = []
+        for reg_list in self.obstacles.values():
+            self.occupied_regions = self.occupied_regions+reg_list
 
     #---------------------------------
     # Handle pick box acknowledgement
@@ -207,7 +219,7 @@ class LTLController(object):
             region = act_dict['attr']['region']
 
             # Check if region is already occupied
-            if region in self.obstacles.values():
+            if region in self.occupied_regions:
                 # Region is already occupied, wait before moving
                 return False
 
