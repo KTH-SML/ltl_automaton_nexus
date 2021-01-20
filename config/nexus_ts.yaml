@@ -54,6 +54,7 @@ state_models:
                     r2: "goto_r2"
                     r3: "goto_r3"
                     r4: "goto_r4"
+                    r6: "goto_r6"
             r5:
                 attr:
                     type: "station"
@@ -65,6 +66,17 @@ state_models:
                 connected_to:
                     r2: "goto_r2"
                     r5: "goto_r5"
+            r6:
+                attr:
+                    type: "station"
+                    pose: [[1,1.2], [0]]
+                    radius: 0.1
+                    angle_threshold: 0.1
+                    dist_hysteresis: 0.03
+                    angle_hysteresis: 0.1
+                connected_to:
+                    r4: "goto_r4"
+                    r6: "goto_r6"
     nexus_load:
         ts_type: "nexus_load"
         initial: "unloaded"
@@ -115,17 +127,24 @@ actions:
         attr:
             region: r5
             pose: [[0,1.2,0], [0,0,0,1]]
+    goto_r6:
+        type: "move"
+        weight: 10
+        guard: "1"
+        attr:
+            region: r5
+            pose: [[1,1.2,0], [0,0,0,1]]
     pick_box:
         type: "pick_box"
         weight: 10
-        guard: "1"
+        guard: "r5"
     pick_assembly:
-    	type: "pick_assembly"
-    	weight: 10
-    	guard: "1"
+        type: "pick_assembly"
+        weight: 10
+        guard: "r6"
     deliver_assembly:
         type: "deliver_assembly"
         weight: 10
-        guard: "1"
+        guard: "r1"
              
 

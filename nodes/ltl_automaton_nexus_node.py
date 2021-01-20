@@ -47,12 +47,13 @@ class LTLController(object):
         self.ltl_state_msg.ts_state.state_dimension_names = self.transition_system["state_dim"]
 
         # Get obstacle name list, if any
-        obstacle_name_list = get_param('obstacle_names', [])
+        obstacle_name_list = rospy.get_param('~obstacle_names', [])
         self.obstacles = {}
         self.occupied_regions = []
         # if obstacle name exist, initialize dict
         if obstacle_name_list:
             for obstacle_name in obstacle_name_list:
+                rospy.loginfo("LTL automaton Nexus node: keeping track of potential obstacle "+str(obstacle_name))
                 self.obstacles.update({str(obstacle_name): ""})
 
         # Init feedback variables
@@ -78,15 +79,17 @@ class LTLController(object):
 
         # Setup subscribers
         for i in range(number_of_dimensions):
-            print "checking dimension states"
+            print("checking dimension states")
             dimension = self.transition_system["state_dim"][i]
-            print dimension
+            print(dimension)
             if (dimension == "2d_pose_region"):
                 # Setup subscriber to 2D pose region monitor
                 self.nexus_region_sub = rospy.Subscriber("current_region", String, self.region_state_callback, i, queue_size=100)
             elif (dimension == "nexus_load"):
                 # Setup subscriber to nexus load state
-                self.nexus_load_sub = rospy.Subscriber("current_load_state", String, self.load_state_callback, i, queue_size=100)
+                self.nexus_load_state_id = i
+                self.curr_ltl_state[i] = "unloaded"
+                #self.nexus_load_sub = rospy.Subscriber("current_load_state", String, self.load_state_callback, i, queue_size=100)
             else:
                 raise ValueError("state type [%s] is not supported by LTL Nexus" % (dimension))
 
@@ -131,6 +134,7 @@ class LTLController(object):
     #------------------------------------------
     def region_state_callback(self, msg, id):
         self.curr_ltl_state[id] = msg.data
+        print("received region "+str(self.curr_ltl_state[id]))
 
     #------------------------------------------------
     # Handle message from obstacle region monitoring
@@ -141,7 +145,7 @@ class LTLController(object):
 
         # Check if region is a station, and add connected cells if it is the case
         if self.transition_system['state_models']['2d_pose_region']['nodes'][msg.data]['attr']['type'] == 'station':
-            for connected_cell in self.transition_system['state_models']['2d_pose_region']['nodes'][msg.data]['connected_to'].keys()
+            for connected_cell in self.transition_system['state_models']['2d_pose_region']['nodes'][msg.data]['connected_to'].keys():
                 self.obstacles[obstacle_name].append(str(connected_cell))
 
         # Rebuild occupied regions list
@@ -201,6 +205,12 @@ class LTLController(object):
             if not(action_dict):
                 raise ValueError("next_move_cmd not found in LTL Nexus transition system")
 
+
+        # Reset feedbacks
+        self.pick_box_feedback = False
+        self.pick_assembly_feedback = False
+        self.deliver_assembly_feedback = False
+
         # Send action_dict to nexus_action()
         self.next_action = action_dict
 
@@ -248,7 +258,11 @@ class LTLController(object):
             if not self.pick_box_feedback:
                 return False
             else:
+                # Reset feedback flag
                 self.pick_box_feedback = False
+                # Change state
+                self.curr_ltl_state[self.nexus_load_state_id] = "loaded_box"
+                print("PICK ACTION OK, CHANGE TO LOADED BOX")
                 return True
             
         #-------------------------------------
@@ -260,7 +274,11 @@ class LTLController(object):
             if not self.pick_assembly_feedback:
                 return False
             else:
+                # Reset feedback flag
                 self.pick_assembly_feedback = False
+                # Change state
+                self.curr_ltl_state[self.nexus_load_state_id] = "loaded_assembly"
+                print("PICK ASSEMBLY ACTION OK, CHANGE TO LOADED ASSEMBLY")
                 return True
 
         #-----------------------
@@ -272,7 +290,11 @@ class LTLController(object):
             if not self.deliver_assembly_feedback:
                 return False
             else:
+                # Reset feedback flag
                 self.deliver_assembly_feedback = False
+                # Change state
+                self.curr_ltl_state[self.nexus_load_state_id] = "unloaded"
+                print("DELIVER ACTION OK, CHANGE TO UNLOADED")
                 return True
 
     #-----------
@@ -297,7 +319,7 @@ class LTLController(object):
             if self.next_action:
                 # If action returns true, action was carried out and is reset
                 if self.nexus_action(self.next_action):
-                    self.nexus_action = {}
+                    self.next_action = {}
                     
             # rospy.loginfo("State is %s and prev state is %s" %(self.curr_ltl_state, self.prev_ltl_state))
             rate.sleep()    
