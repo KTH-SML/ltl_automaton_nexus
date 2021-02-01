@@ -63,7 +63,7 @@ The robot transition system needs to be of the following type: `[2d_pose_region,
 - `deliver_assembly`  (from *nexus_load*): Perform deliver action. The nexus robot doesn't do anything per se but wait for confirmation that assembly has been taken off.
 
 ### Obstacle avoidance
-A very limited "obstacle avoidance" feature is included. In addition of the low-level path planner avoidance, the robot will not move into an occupied region even when given the order to. The `goto_<region>` action will not output a goal pose command if the region it is supposed to go to is occupied. Occupation is checked by simply looking at the `current_region` topic of all agent included in the `obstacle_names` list parameter. All agents in `obstacle_names` must use a region_2d_pose pose monitor and the same `2d_pose_region` state model in their transition system.
+A very limited "obstacle avoidance" feature is included. In addition of the low-level path planner avoidance, the robot will not move into an occupied region even when given the order to. The `goto_<region>` action will not output a goal pose command if the region it is supposed to go to is occupied. Occupation is checked by simply looking at the `current_region` topic of all agent included in the `obstacle_names` list parameter. All agents in `obstacle_names` must use a region_2d_pose_monitor and the same `2d_pose_region` state model in their transition system.
 
 ## Config files
 - **nexus_ltl_formula.yaml** Example of LTL formula with both hard and soft task.
@@ -125,5 +125,14 @@ LTL Nexus node, execute the action sent by the LTL planner and returns the aggre
     Agent TS state topic. The agent TS state is composed of a list of states from the different state models composing the action model. The Nexus node aggretates the `2d_pose_region` state from a region_2d_pose_monitor with the internal load state.
     
 #### Parameters
+- `agent_name` (string, default: "agent")
 
+    Agent name. NOT IN USE, SHOULD BE REMOVED?
+    
+- `transition_system_textfile` (string)
 
+    Action model transition system definition.
+    
+- `obstacle_names` (string[])
+
+    List of obstacle to be tracked to check if a region is occupied. All tracked agents must use the region_2d_pose_monitor and the same `2d_pose_region` state model in their transition system.
