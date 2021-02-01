@@ -63,10 +63,67 @@ The robot transition system needs to be of the following type: `[2d_pose_region,
 - `deliver_assembly`  (from *nexus_load*): Perform deliver action. The nexus robot doesn't do anything per se but wait for confirmation that assembly has been taken off.
 
 ### Obstacle avoidance
-A very limited "obstacle avoidance" feature is included. In addition of the low-level path planner avoidance, the robot will not move into an occupied region even when given the order to. The `goto_<region>` action will not output a goal pose command if the region it is supposed to go to is occupied. Occupation is checked by simply looking at the `current_region` topic of all agent included in the `obstacle_names` list parameters. All agents in `obstacle_names` must use a region_2d_pose pose monitor and the same `2d_pose_region` state model in their transition system.
+A very limited "obstacle avoidance" feature is included. In addition of the low-level path planner avoidance, the robot will not move into an occupied region even when given the order to. The `goto_<region>` action will not output a goal pose command if the region it is supposed to go to is occupied. Occupation is checked by simply looking at the `current_region` topic of all agent included in the `obstacle_names` list parameter. All agents in `obstacle_names` must use a region_2d_pose pose monitor and the same `2d_pose_region` state model in their transition system.
 
 ## Config files
+- **nexus_ltl_formula.yaml** Example of LTL formula with both hard and soft task.
+
+- **nexus_ts.yaml** Example of LTL transition system definition.
 
 ## Launch files
 
+- **ltl_nexus.launch**: Example of the LTL planner implementation with the nexus as agent. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
+    - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
+    - `agent_name` Agent name. Default: `nexus`.
+
+-  **ltl_nexus_gazebo.launch**: Gazebo simulation of the LTL planner implementation with the nexus as agent. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
+    - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
+    - `agent_name` Agent name. Default: `nexus`.
+
+-  **ltl_nexus_hil.launch**: Gazebo simulation with HIL (Human-in-The-Loop) and IRL (Inverse Reinforcement Learning) features. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
+    - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
+    - `agent_name` Agent name. Default: `nexus`.
+    
 ## Nodes
+### ltl_automaton_nexus_node.py
+LTL Nexus node, execute the action sent by the LTL planner and returns the aggregated TS state from the state monitors. The nexus load state monitor is integrated within the nexus node and switching state in automatically done after completed the relevant action.
+
+#### Actions
+*Action published topics*
+- `move_base/goal` ([move_base_msgs/MoveBaseActionGoal](http://docs.ros.org/en/api/move_base_msgs/html/msg/MoveBaseActionGoal.html))
+    
+    Send pose command to reach region when executing the action `goto_<region>`.
+
+#### Subscribed Topics
+- `next_move_cmd` ([std_msgs/String](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/String.html))
+
+    Next move from the output word (action sequence) to be carried out by the agent in order to satisfy the plan.
+    
+- `current_region` ([std_msgs/String](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/String.html))
+
+    Agent region from the transition system state model `2d_pose_region`.
+  
+- `placed_box_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+
+    Feedback for the action `pick_box`. The action is considered completed when an acknowledgement message is received on this topic.
+
+- `placed_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+
+    Feedback for the action `pick_assembly`. The action is considered completed when an acknowledgement message is received on this topic.
+  
+- `delivered_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+
+    Feedback for the action `deliver_assembly`. The action is considered completed when an acknowledgement message is received on this topic.
+
+- `<obstacle_name>/current_region` ([std_msgs/String](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/String.html))
+    
+    For each obstacle in the `obstacle_names` list parameter, get the current region and mark it s occupied.
+    
+#### Published Topics
+- `ts_state` ([ltl_automaton_msgs/TransitionSystemStateStamped](/ltl_automaton_msgs/msg/TransitionSystemStateStamped.msg))
+
+    Agent TS state topic. The agent TS state is composed of a list of states from the different state models composing the action model. The Nexus node aggretates the `2d_pose_region` state from a region_2d_pose_monitor with the internal load state.
+    
+#### Parameters
+
+
