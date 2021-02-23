@@ -238,7 +238,7 @@ class LTLController(object):
 
             # If next region is a station, request access, otherwise empty station request
             station_access_req = std_msgs.msg.String()
-            if self.transition_system['2d_pose_region']['nodes'][region]['attr']['type'] == "station":
+            if self.transition_system['state_models']['2d_pose_region']['nodes'][region]['attr']['type'] == "station":
                 station_access_req.data = region
             self.station_access_request_pub.publish(station_access_req)
 
