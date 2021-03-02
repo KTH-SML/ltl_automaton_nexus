@@ -131,7 +131,7 @@ LTL Nexus node, execute the action sent by the LTL planner and returns the aggre
 #### Parameters
 - `agent_name` (string, default: "agent")
 
-    Agent name. NOT IN USE, SHOULD BE REMOVED?
+    Agent name.
     
 - `transition_system_textfile` (string)
 
