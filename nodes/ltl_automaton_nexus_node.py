@@ -112,13 +112,13 @@ class LTLController(object):
         self.next_move_sub = rospy.Subscriber("next_move_cmd", std_msgs.msg.String, self.next_move_callback, queue_size=1)
 
         # Setup assembly task (pick box) acknowkedge topic subscriber
-        self.pick_box_feedback_sub = rospy.Subscriber("placed_box_ack", std_msgs.msg.Bool, self.pick_box_feedback_callback)
+        self.pick_box_feedback_sub = rospy.Subscriber("/placed_box_ack", std_msgs.msg.Bool, self.pick_box_feedback_callback)
 
         # Setup assembly task (pick assembly) acknowkedge topic subscriber
-        self.pick_assembly_feedback_sub = rospy.Subscriber("placed_assembly_ack", std_msgs.msg.Bool, self.pick_assembly_feedback_callback)
+        self.pick_assembly_feedback_sub = rospy.Subscriber("/placed_assembly_ack", std_msgs.msg.Bool, self.pick_assembly_feedback_callback)
 
         # Setup delivery task acknowledge topic subscriber
-        self.deliver_assembly_feedback_sub = rospy.Subscriber("delivered_assembly_ack", std_msgs.msg.Bool, self.deliver_assembly_feedback_callback)
+        self.deliver_assembly_feedback_sub = rospy.Subscriber("/delivered_assembly_ack", std_msgs.msg.Bool, self.deliver_assembly_feedback_callback)
 
         # Setup obstacle region subcribers
         for obstacle_name in self.obstacles.keys():
