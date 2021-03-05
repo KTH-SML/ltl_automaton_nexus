@@ -123,11 +123,15 @@ LTL Nexus node, execute the action sent by the LTL planner and returns the aggre
 - `ts_state` ([ltl_automaton_msgs/TransitionSystemStateStamped](/ltl_automaton_msgs/msg/TransitionSystemStateStamped.msg))
 
     Agent TS state topic. The agent TS state is composed of a list of states from the different state models composing the action model. The Nexus node aggretates the `2d_pose_region` state from a region_2d_pose_monitor with the internal load state.
+
+- `station_access_request` ([std_msgs/String](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/String.html))
+
+   Station the nexus agent wants to enter. Left empty when the agent wants to exit a station.
     
 #### Parameters
 - `agent_name` (string, default: "agent")
 
-    Agent name. NOT IN USE, SHOULD BE REMOVED?
+    Agent name.
     
 - `transition_system_textfile` (string)
 
