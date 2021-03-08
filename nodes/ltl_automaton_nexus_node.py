@@ -154,7 +154,9 @@ class LTLController(object):
         # Rebuild occupied regions list
         self.occupied_regions = []
         for reg_list in self.obstacles.values():
-            self.occupied_regions = self.occupied_regions+reg_list
+            # If list not empty
+            if reg_list:
+                self.occupied_regions = self.occupied_regions+reg_list
 
     #---------------------------------
     # Handle pick box acknowledgement
