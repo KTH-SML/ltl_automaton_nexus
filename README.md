@@ -109,15 +109,15 @@ LTL Nexus node, execute the action sent by the LTL planner and returns the aggre
 
     Agent region from the transition system state model `2d_pose_region`.
   
-- `placed_box_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+- `/placed_box_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
 
     Feedback for the action `pick_box`. The action is considered completed when an acknowledgement message is received on this topic.
 
-- `placed_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+- `/placed_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
 
     Feedback for the action `pick_assembly`. The action is considered completed when an acknowledgement message is received on this topic.
   
-- `delivered_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
+- `/delivered_assembly_ack` ([std_msgs/Bool](http://docs.ros.org/en/noetic/api/std_msgs/html/msg/Bool.html))
 
     Feedback for the action `deliver_assembly`. The action is considered completed when an acknowledgement message is received on this topic.
 
