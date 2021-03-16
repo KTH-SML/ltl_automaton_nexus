@@ -8,7 +8,7 @@ Allow to use Nexus 4WD mecanum robot as LTL agent of ltl_automaton_core package.
 
 - [sml_nexus_simulator](https://github.com/KTH-SML/sml_nexus_simulator). Nexus robot simulation package, only needed for running gazebo simulation
 
-- [sml_nexus](https://github.com/KTH-SML/sml_nexus). Nexus robot package, only needed for running gazebo simulation
+- [sml_nexus](https://github.com/KTH-SML/sml_nexus). Nexus robot package.
 
 - [motion_capture_simulator](https://github.com/KTH-SML/motion_capture_simulator.git). Simulate the motion capture system in gazebo, only needed for running gazebo simulation.
 
