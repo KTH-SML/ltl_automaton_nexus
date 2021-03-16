@@ -75,14 +75,20 @@ A very limited "obstacle avoidance" feature is included. In addition of the low-
 - **ltl_nexus.launch**: Example of the LTL planner implementation with the nexus as agent. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
     - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
     - `agent_name` Agent name. Default: `nexus`.
+    - `initial_beta` A higher value will help enforcing the soft task while a lower value can leave the soft task unenforced by the plan. The given value is only the initial one since beta can vary. Default: `10`
+    - `gamma` Suffix weighting parameter. A higher value will increase the suffix cost and therefor minimize suffix word length. Default: `10`.
 
 -  **ltl_nexus_gazebo.launch**: Gazebo simulation of the LTL planner implementation with the nexus as agent. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
     - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
     - `agent_name` Agent name. Default: `nexus`.
+    - `initial_beta` A higher value will help enforcing the soft task while a lower value can leave the soft task unenforced by the plan. The given value is only the initial one since beta can vary. Default: `10`
+    - `gamma` Suffix weighting parameter. A higher value will increase the suffix cost and therefor minimize suffix word length. Default: `10`.
 
 -  **ltl_nexus_hil.launch**: Gazebo simulation with HIL (Human-in-The-Loop) and IRL (Inverse Reinforcement Learning) features. Run the planner node and nexus node with an example TS (Transition System) and example LTL formula.
     - `initial_ts_state_from_agent` If false, get initial TS (Transition System) state from the TS definition text parameter. If true, get initial TS state from agent topic. Default: `true`.
     - `agent_name` Agent name. Default: `nexus`.
+    - `initial_beta` A higher value will help enforcing the soft task while a lower value can leave the soft task unenforced by the plan. The given value is only the initial one since beta can vary. Default: `10`
+    - `gamma` Suffix weighting parameter. A higher value will increase the suffix cost and therefor minimize suffix word length. Default: `10`.
     
 ## Nodes
 ### ltl_automaton_nexus_node.py
